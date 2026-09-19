@@ -8,6 +8,6 @@ define root view entity ZC_Asset
   key AssetId,
       FacilityId,
       AssetName,
-      AssetType,
+      Category,
       _Facility : redirected to ZC_Facility
 }

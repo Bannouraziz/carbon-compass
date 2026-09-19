@@ -1,4 +1,6 @@
 @EndUserText.label: 'ESG Master Data Maintenance'
 define service ZUI_ESG_MASTERDATA {
-  expose ZC_Facility as Facility;
+  expose ZC_Facility       as Facility;
+  expose ZC_Asset          as Asset;
+  expose ZC_EmissionFactor as EmissionFactor;
 }
