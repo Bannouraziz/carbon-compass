@@ -1,0 +1,9 @@
+@AccessControl.authorizationCheck: #NOT_REQUIRED
+@EndUserText.label: 'Facility - Interface View'
+define view entity ZI_Facility as select from zesg_facility
+{
+    key facility_id as FacilityId,
+    facility_name as FacilityName,
+    country as Country,
+    business_unit as BusinessUnit
+}
