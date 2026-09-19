@@ -1,2 +1,1 @@
-# carbon-compass
-Full-stack SAP capstone: ABAP RAP + CDS + Fiori Elements on BTP, with an MCP server exposing ESG emissions data to an LLM copilot.
+A clean-core sustainability tracking app built end-to-end on SAP BTP — RAP-managed business objects and CDS views for emissions data, Fiori Elements for entry and approval workflows, role-based authorization scoped by facility, and an MCP server that lets an LLM answer natural-language questions over the same data an ESG manager sees in the UI.
