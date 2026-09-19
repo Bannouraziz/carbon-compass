@@ -1,0 +1,21 @@
+managed implementation in class zbp_i_asset unique;
+strict ( 2 );
+
+define behavior for ZI_Asset //alias <alias_name>
+persistent table zesg_asset
+lock master
+authorization master ( instance )
+{
+  create;
+  update;
+  delete;
+
+field ( readonly : update ) AssetId;
+  mapping for zesg_asset
+  {
+    AssetId     = asset_id;
+    FacilityId  = facility_id;
+    AssetName   = asset_name;
+    AssetType   = asset_type;
+  }
+}

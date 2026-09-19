@@ -1,0 +1,9 @@
+projection;
+strict ( 2 );
+
+define behavior for ZC_EmissionFactor alias EmissionFactor
+{
+  use create;
+  use update;
+  use delete;
+}

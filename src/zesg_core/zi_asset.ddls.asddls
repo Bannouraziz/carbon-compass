@@ -1,6 +1,6 @@
 @AccessControl.authorizationCheck: #NOT_REQUIRED
 @EndUserText.label: 'Asset - Interface View'
-define root view entity ZI_Asset
+define  root view entity ZI_Asset
   as select from zesg_asset
   association to ZI_Facility as _Facility
     on $projection.FacilityId = _Facility.FacilityId

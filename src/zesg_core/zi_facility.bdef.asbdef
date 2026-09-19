@@ -1,0 +1,22 @@
+managed implementation in class zbp_i_facility unique;
+strict ( 2 );
+
+define behavior for ZI_Facility alias Facility
+persistent table zesg_facility
+lock master
+authorization master ( instance )
+{
+  create;
+  update;
+  delete;
+
+field ( readonly : update ) FacilityId;
+
+  mapping for zesg_facility
+  {
+    FacilityId    = facility_id;
+    FacilityName  = facility_name;
+    Country       = country;
+    BusinessUnit  = business_unit;
+  }
+}

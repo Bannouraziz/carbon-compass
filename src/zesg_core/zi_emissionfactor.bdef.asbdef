@@ -1,0 +1,23 @@
+managed implementation in class zbp_i_emissionfactor unique;
+strict ( 2 );
+
+define behavior for ZI_EmissionFactor //alias <alias_name>
+persistent table zesg_emfactor
+lock master
+authorization master ( instance )
+{
+  create;
+  update;
+  delete;
+
+field ( readonly : update ) ActivityType;
+
+  mapping for zesg_emfactor
+  {
+    ActivityType  = activity_type;
+    Description   = description;
+    Scope         = scope;
+    FactorValue   = factor_value;
+    Unit          = unit;
+  }
+}

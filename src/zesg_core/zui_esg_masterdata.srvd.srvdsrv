@@ -1,0 +1,4 @@
+@EndUserText.label: 'ESG Master Data Maintenance'
+define service ZUI_ESG_MASTERDATA {
+  expose ZC_Facility as Facility;
+}

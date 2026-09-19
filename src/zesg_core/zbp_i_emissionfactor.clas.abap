@@ -1,0 +1,5 @@
+CLASS zbp_i_emissionfactor DEFINITION PUBLIC ABSTRACT FINAL FOR BEHAVIOR OF zi_emissionfactor.
+ENDCLASS.
+
+CLASS zbp_i_emissionfactor IMPLEMENTATION.
+ENDCLASS.
