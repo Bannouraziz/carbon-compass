@@ -1,0 +1,55 @@
+managed implementation in class zbp_i_emissionrecord unique;
+strict(2);
+
+define behavior for ZI_EmissionRecord alias EmissionRecord
+persistent table zesg_emrec
+lock master
+authorization master ( instance )
+{
+  create;
+  update;
+  delete;
+
+  association _Items { create; }
+
+  field ( readonly ) EmissionRecordId;
+  field ( readonly ) CreatedBy, CreatedAt, LastChangedBy, LastChangedAt;
+
+  mapping for zesg_emrec
+  {
+    EmissionRecordId  = emissionrecord_id;
+    FacilityId        = facility_id;
+    ReportingPeriod   = reporting_period;
+    Scope             = scope;
+    Status            = status;
+    TotalCO2e         = total_co2e;
+    CreatedBy         = created_by;
+    CreatedAt         = created_at;
+    LastChangedBy     = last_changed_by;
+    LastChangedAt     = last_changed_at;
+  }
+}
+
+define behavior for ZI_EmissionRecordItem alias EmissionRecordItem
+persistent table zesg_emrecitm
+lock dependent by _EmissionRecord
+authorization master ( instance )
+{
+  update;
+  delete;
+
+  field ( readonly ) EmissionRecordItemId, EmissionRecordId;
+
+  association _EmissionRecord;
+
+  mapping for zesg_emrecitm
+  {
+    EmissionRecordItemId  = emissionrecorditem_id;
+    EmissionRecordId      = emissionrecord_id;
+    AssetId               = asset_id;
+    ActivityType          = activity_type;
+    Quantity               = quantity;
+    Unit                   = unit;
+    CO2e                   = co2e;
+  }
+}
