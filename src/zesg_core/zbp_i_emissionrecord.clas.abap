@@ -1,0 +1,5 @@
+CLASS zbp_i_emissionrecord DEFINITION PUBLIC ABSTRACT FINAL FOR BEHAVIOR OF zi_emissionrecord.
+ENDCLASS.
+
+CLASS zbp_i_emissionrecord IMPLEMENTATION.
+ENDCLASS.

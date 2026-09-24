@@ -1,0 +1,5 @@
+@EndUserText.label: 'ESG Emission Record Processing'
+define service ZUI_ESG_EMISSIONRECORD {
+  expose ZC_EmissionRecord     as EmissionRecord;
+  expose ZC_EmissionRecordItem as EmissionRecordItem;
+}

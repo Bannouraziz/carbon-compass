@@ -1,0 +1,18 @@
+@Metadata.layer: #CORE
+annotate view ZC_EmissionRecordItem with
+{
+  @UI.lineItem: [{ position: 10 }]
+  AssetId;
+
+  @UI.lineItem: [{ position: 20 }]
+  ActivityType;
+
+  @UI.lineItem: [{ position: 30 }]
+  Quantity;
+
+  @UI.lineItem: [{ position: 40 }]
+  Unit;
+
+  @UI.lineItem: [{ position: 50 }]
+  CO2e;
+}

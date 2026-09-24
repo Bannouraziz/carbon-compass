@@ -1,0 +1,26 @@
+projection;
+strict(2);
+use draft;
+
+define behavior for ZC_EmissionRecord alias EmissionRecord
+{
+  use create;
+  use update;
+  use delete;
+
+  use association _Items { create; with draft; }
+
+  use action Edit;
+  use action Activate;
+  use action Discard;
+  use action Resume;
+  use action Prepare;
+}
+
+define behavior for ZC_EmissionRecordItem alias EmissionRecordItem
+{
+  use update;
+  use delete;
+
+  use association _EmissionRecord;
+}

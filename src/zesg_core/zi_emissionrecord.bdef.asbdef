@@ -1,19 +1,27 @@
 managed implementation in class zbp_i_emissionrecord unique;
 strict(2);
+with draft;
 
 define behavior for ZI_EmissionRecord alias EmissionRecord
 persistent table zesg_emrec
-lock master
-authorization master ( instance )
+draft table zesg_emrec_d
+lock master total etag LastChangedAt
+authorization master ( global )
 {
   create;
   update;
   delete;
 
-  association _Items { create; }
+  association _Items { create; with draft; }
 
-  field ( readonly ) EmissionRecordId;
+field ( readonly, numbering : managed ) EmissionRecordId;
   field ( readonly ) CreatedBy, CreatedAt, LastChangedBy, LastChangedAt;
+
+  draft action Edit;
+  draft action Activate;
+  draft action Discard;
+  draft action Resume;
+  draft determine action Prepare;
 
   mapping for zesg_emrec
   {
@@ -32,13 +40,15 @@ authorization master ( instance )
 
 define behavior for ZI_EmissionRecordItem alias EmissionRecordItem
 persistent table zesg_emrecitm
+draft table zesg_emrecitm_d
 lock dependent by _EmissionRecord
-authorization master ( instance )
+authorization dependent by _EmissionRecord
 {
   update;
   delete;
 
-  field ( readonly ) EmissionRecordItemId, EmissionRecordId;
+field ( readonly, numbering : managed ) EmissionRecordItemId;
+field ( readonly ) EmissionRecordId;
 
   association _EmissionRecord;
 

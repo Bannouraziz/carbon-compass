@@ -1,4 +1,5 @@
 @EndUserText.label: 'Emission Record Item - Projection View'
+@Metadata.allowExtensions: true
 define view entity ZC_EmissionRecordItem
   as projection on ZI_EmissionRecordItem
 {
