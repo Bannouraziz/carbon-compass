@@ -10,5 +10,6 @@ define root view entity ZI_Asset
       facility_id   as FacilityId,
       asset_name    as AssetName,
       asset_type    as Category,
+      last_changed_at as LastChangedAt,
       _Facility
 }

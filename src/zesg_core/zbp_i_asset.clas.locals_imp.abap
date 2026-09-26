@@ -1,14 +1,23 @@
-CLASS lhc_ZI_Asset DEFINITION INHERITING FROM cl_abap_behavior_handler.
+CLASS lhc_Asset DEFINITION INHERITING FROM cl_abap_behavior_handler.
   PRIVATE SECTION.
 
-    METHODS get_instance_authorizations FOR INSTANCE AUTHORIZATION
-      keys REQUEST requested_authorizations FOR ZI_Asset RESULT result.
+    METHODS get_global_authorizations FOR GLOBAL AUTHORIZATION
+      REQUEST requested_authorizations FOR Asset RESULT result.
 
 ENDCLASS.
 
-CLASS lhc_ZI_Asset IMPLEMENTATION.
+CLASS lhc_Asset IMPLEMENTATION.
 
-  METHOD get_instance_authorizations.
+  METHOD get_global_authorizations.
+    IF requested_authorizations-%create = if_abap_behv=>mk-on.
+      result-%create = if_abap_behv=>auth-allowed.
+    ENDIF.
+    IF requested_authorizations-%update = if_abap_behv=>mk-on.
+      result-%update = if_abap_behv=>auth-allowed.
+    ENDIF.
+    IF requested_authorizations-%delete = if_abap_behv=>mk-on.
+      result-%delete = if_abap_behv=>auth-allowed.
+    ENDIF.
   ENDMETHOD.
 
 ENDCLASS.

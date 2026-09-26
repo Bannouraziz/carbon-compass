@@ -9,5 +9,6 @@ define root view entity ZC_Asset
       FacilityId,
       AssetName,
       Category,
+      LastChangedAt,
       _Facility : redirected to ZC_Facility
 }

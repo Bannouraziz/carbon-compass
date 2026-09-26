@@ -15,8 +15,7 @@ authorization master ( global )
   association _Items { create; with draft; }
 
 field ( readonly, numbering : managed ) EmissionRecordId;
-  field ( readonly ) CreatedBy, CreatedAt, LastChangedBy, LastChangedAt;
-
+  field ( readonly ) CreatedBy, CreatedAt, LastChangedBy, LastChangedAt,TotalCO2e;
   draft action Edit;
   draft action Activate;
   draft action Discard;
@@ -48,8 +47,10 @@ authorization dependent by _EmissionRecord
   delete;
 
 field ( readonly, numbering : managed ) EmissionRecordItemId;
-field ( readonly ) EmissionRecordId;
+field ( readonly ) EmissionRecordId,CO2e;
+determination calculateItemCO2e on save { field Quantity, ActivityType; }
 
+determination calculateTotalCO2e on save { field CO2e; }
   association _EmissionRecord;
 
   mapping for zesg_emrecitm

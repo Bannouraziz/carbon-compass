@@ -8,5 +8,7 @@ define root view entity ZC_Facility
   key FacilityId,
       FacilityName,
       Country,
-      BusinessUnit
+      BusinessUnit,
+       LastChangedAt
+      
 }

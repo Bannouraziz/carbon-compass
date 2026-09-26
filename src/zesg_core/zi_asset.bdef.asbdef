@@ -1,22 +1,30 @@
 managed implementation in class zbp_i_asset unique;
-strict ( 2 );
+strict(2);
+with draft;
 
-define behavior for ZI_Asset //alias <alias_name>
+define behavior for ZI_Asset alias Asset
 persistent table zesg_asset
-lock master
-authorization master ( instance )
+draft table zesg_asset_d
+lock master total etag LastChangedAt
+authorization master ( global )
 {
   create;
   update;
   delete;
 
-field ( readonly : update ) AssetId;
-mapping for zesg_asset
+  field ( readonly : update ) AssetId;
 
-{
-  AssetId     = asset_id;
-  FacilityId  = facility_id;
-  AssetName   = asset_name;
-  Category    = asset_type;
-}
+  draft action Edit;
+  draft action Activate;
+  draft action Discard;
+  draft action Resume;
+  draft determine action Prepare;
+
+  mapping for zesg_asset
+  {
+    AssetId     = asset_id;
+    FacilityId  = facility_id;
+    AssetName   = asset_name;
+    Category    = asset_type;
+  }
 }

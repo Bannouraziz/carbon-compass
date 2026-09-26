@@ -1,16 +1,24 @@
 managed implementation in class zbp_i_emissionfactor unique;
-strict ( 2 );
+strict(2);
+with draft;
 
-define behavior for ZI_EmissionFactor //alias <alias_name>
+define behavior for ZI_EmissionFactor alias EmissionFactor
 persistent table zesg_emfactor
-lock master
-authorization master ( instance )
+draft table zesg_emfactor_d
+lock master total etag LastChangedAt
+authorization master ( global )
 {
   create;
   update;
   delete;
 
-field ( readonly : update ) ActivityType;
+  field ( readonly : update ) ActivityType;
+
+  draft action Edit;
+  draft action Activate;
+  draft action Discard;
+  draft action Resume;
+  draft determine action Prepare;
 
   mapping for zesg_emfactor
   {

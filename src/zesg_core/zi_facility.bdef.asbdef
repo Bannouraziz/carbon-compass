@@ -1,16 +1,24 @@
 managed implementation in class zbp_i_facility unique;
-strict ( 2 );
+strict(2);
+with draft;
 
 define behavior for ZI_Facility alias Facility
 persistent table zesg_facility
-lock master
-authorization master ( instance )
+draft table zesg_facility_d
+lock master total etag LastChangedAt
+authorization master ( global )
 {
   create;
   update;
   delete;
 
-field ( readonly : update ) FacilityId;
+  field ( readonly : update ) FacilityId;
+
+  draft action Edit;
+  draft action Activate;
+  draft action Discard;
+  draft action Resume;
+  draft determine action Prepare;
 
   mapping for zesg_facility
   {

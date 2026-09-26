@@ -6,5 +6,6 @@ define root view entity ZI_EmissionFactor as select from zesg_emfactor
     description as Description,
     scope as Scope,
     factor_value as FactorValue,
+   last_changed_at as LastChangedAt,
     unit as Unit
 }
