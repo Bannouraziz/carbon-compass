@@ -75,6 +75,21 @@ CLASS lhc_EmissionRecord DEFINITION INHERITING FROM cl_abap_behavior_handler.
       REQUEST requested_authorizations FOR EmissionRecord RESULT result.
 
 
+
+
+    METHODS submitRecord FOR MODIFY
+      keys FOR ACTION EmissionRecord~submitRecord RESULT result.
+
+    METHODS validateBeforeSubmit FOR VALIDATE ON SAVE
+      keys FOR EmissionRecord~validateBeforeSubmit.
+
+          METHODS approveRecord FOR MODIFY
+      keys FOR ACTION EmissionRecord~approveRecord RESULT result.
+
+    METHODS rejectRecord FOR MODIFY
+      keys FOR ACTION EmissionRecord~rejectRecord RESULT result.
+
+
 ENDCLASS.
 
 CLASS lhc_EmissionRecord IMPLEMENTATION.
@@ -94,4 +109,75 @@ METHOD get_global_authorizations.
 ENDMETHOD.
 
 
+
+
+
+  METHOD submitRecord.
+    MODIFY ENTITIES OF ZI_EmissionRecord IN LOCAL MODE
+      ENTITY EmissionRecord
+        UPDATE FIELDS ( Status )
+        WITH VALUE #( FOR key IN keys
+                      ( %tky = key-%tky Status = 'SUBMITTED' ) ).
+
+    READ ENTITIES OF ZI_EmissionRecord IN LOCAL MODE
+      ENTITY EmissionRecord
+        ALL FIELDS WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_records).
+
+    result = VALUE #( FOR rec IN lt_records
+                      ( %tky = rec-%tky %param = rec ) ).
+  ENDMETHOD.
+
+
+
+
+  METHOD validateBeforeSubmit.
+    READ ENTITIES OF ZI_EmissionRecord IN LOCAL MODE
+      ENTITY EmissionRecord
+        FIELDS ( Status TotalCO2e )
+        WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_records).
+
+    LOOP AT lt_records INTO DATA(ls_rec).
+      IF ls_rec-Status = 'SUBMITTED' AND ls_rec-TotalCO2e <= 0.
+        APPEND VALUE #( %tky = ls_rec-%tky ) TO failed-emissionrecord.
+        APPEND VALUE #( %tky = ls_rec-%tky
+                        %msg = new_message_with_text(
+                                 severity = if_abap_behv_message=>severity-error
+                                 text     = 'Cannot submit a record with zero total emissions' ) )
+               TO reported-emissionrecord.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+  METHOD approveRecord.
+    MODIFY ENTITIES OF ZI_EmissionRecord IN LOCAL MODE
+      ENTITY EmissionRecord
+        UPDATE FIELDS ( Status )
+        WITH VALUE #( FOR key IN keys
+                      ( %tky = key-%tky Status = 'APPROVED' ) ).
+
+    READ ENTITIES OF ZI_EmissionRecord IN LOCAL MODE
+      ENTITY EmissionRecord
+        ALL FIELDS WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_records).
+
+    result = VALUE #( FOR rec IN lt_records
+                      ( %tky = rec-%tky %param = rec ) ).
+  ENDMETHOD.
+
+  METHOD rejectRecord.
+    MODIFY ENTITIES OF ZI_EmissionRecord IN LOCAL MODE
+      ENTITY EmissionRecord
+        UPDATE FIELDS ( Status )
+        WITH VALUE #( FOR key IN keys
+                      ( %tky = key-%tky Status = 'REJECTED' ) ).
+
+    READ ENTITIES OF ZI_EmissionRecord IN LOCAL MODE
+      ENTITY EmissionRecord
+        ALL FIELDS WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_records).
+
+    result = VALUE #( FOR rec IN lt_records
+                      ( %tky = rec-%tky %param = rec ) ).
+  ENDMETHOD.
 ENDCLASS.

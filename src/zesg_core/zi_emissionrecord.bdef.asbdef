@@ -14,13 +14,20 @@ authorization master ( global )
 
   association _Items { create; with draft; }
 
-field ( readonly, numbering : managed ) EmissionRecordId;
-  field ( readonly ) CreatedBy, CreatedAt, LastChangedBy, LastChangedAt,TotalCO2e;
+  field ( readonly, numbering : managed ) EmissionRecordId;
+  field ( readonly ) CreatedBy, CreatedAt, LastChangedBy, LastChangedAt, TotalCO2e, Status;
+
   draft action Edit;
   draft action Activate;
   draft action Discard;
   draft action Resume;
   draft determine action Prepare;
+
+  action submitRecord result [1] $self;
+  action approveRecord result [1] $self;
+  action rejectRecord result [1] $self;
+
+  validation validateBeforeSubmit on save { field Status; }
 
   mapping for zesg_emrec
   {
@@ -36,7 +43,6 @@ field ( readonly, numbering : managed ) EmissionRecordId;
     LastChangedAt     = last_changed_at;
   }
 }
-
 define behavior for ZI_EmissionRecordItem alias EmissionRecordItem
 persistent table zesg_emrecitm
 draft table zesg_emrecitm_d

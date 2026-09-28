@@ -15,6 +15,9 @@ define behavior for ZC_EmissionRecord alias EmissionRecord
   use action Discard;
   use action Resume;
   use action Prepare;
+  use action submitRecord;
+  use action approveRecord;
+  use action rejectRecord;
 }
 
 define behavior for ZC_EmissionRecordItem alias EmissionRecordItem

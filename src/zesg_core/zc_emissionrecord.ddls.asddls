@@ -18,6 +18,12 @@ define root view entity ZC_EmissionRecord
           position:      20,
           targetElement: '_Items' }
       ]
+            @UI.identification: [
+        { type: #FOR_ACTION, dataAction: 'submitRecord',  label: 'Submit' },
+        { type: #FOR_ACTION, dataAction: 'approveRecord', label: 'Approve' },
+        { type: #FOR_ACTION, dataAction: 'rejectRecord',  label: 'Reject' }
+      ]
+    
   key EmissionRecordId,
 
       @UI.lineItem:      [{ position: 10 }]
