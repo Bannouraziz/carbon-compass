@@ -6,7 +6,7 @@ define behavior for ZI_EmissionRecord alias EmissionRecord
 persistent table zesg_emrec
 draft table zesg_emrec_d
 lock master total etag LastChangedAt
-authorization master ( global )
+authorization master ( instance )
 {
   create;
   update;

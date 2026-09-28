@@ -71,8 +71,8 @@ ENDCLASS.
 CLASS lhc_EmissionRecord DEFINITION INHERITING FROM cl_abap_behavior_handler.
   PRIVATE SECTION.
 
-    METHODS get_global_authorizations FOR GLOBAL AUTHORIZATION
-      REQUEST requested_authorizations FOR EmissionRecord RESULT result.
+    METHODS get_instance_authorizations FOR INSTANCE AUTHORIZATION
+      keys REQUEST requested_authorizations FOR EmissionRecord RESULT result.
 
 
 
@@ -94,20 +94,49 @@ ENDCLASS.
 
 CLASS lhc_EmissionRecord IMPLEMENTATION.
 
-METHOD get_global_authorizations.
-  " Permissive stub — grant everything for now.
-  " Real persona-based logic comes with the authorization milestone.
-  IF requested_authorizations-%create = if_abap_behv=>mk-on.
-    result-%create = if_abap_behv=>auth-allowed.
-  ENDIF.
-  IF requested_authorizations-%update = if_abap_behv=>mk-on.
-    result-%update = if_abap_behv=>auth-allowed.
-  ENDIF.
-  IF requested_authorizations-%delete = if_abap_behv=>mk-on.
-    result-%delete = if_abap_behv=>auth-allowed.
-  ENDIF.
-ENDMETHOD.
+  METHOD get_instance_authorizations.
+    " Read the facility for each record being checked
+    READ ENTITIES OF ZI_EmissionRecord IN LOCAL MODE
+      ENTITY EmissionRecord
+        FIELDS ( FacilityId Status )
+        WITH CORRESPONDING #( keys )
+      RESULT DATA(lt_records).
 
+    LOOP AT lt_records INTO DATA(ls_rec).
+      " Look up this user's role for this facility
+      SELECT SINGLE role_type
+        FROM zesg_usr_assign
+        WHERE user_id     = @sy-uname
+          AND facility_id = @ls_rec-FacilityId
+        INTO @DATA(lv_role).
+
+      DATA(lv_granted) = COND #(
+        WHEN sy-subrc <> 0 THEN if_abap_behv=>fc-o-disabled  " no assignment = no access
+        WHEN lv_role = 'AUDITOR' THEN if_abap_behv=>fc-o-disabled " read only
+        ELSE if_abap_behv=>fc-o-enabled ).
+
+      " Approve/Reject only for MANAGER, Submit only for OFFICER
+      DATA(lv_can_approve) = COND #(
+        WHEN lv_role = 'MANAGER' AND ls_rec-Status = 'SUBMITTED'
+        THEN if_abap_behv=>fc-o-enabled
+        ELSE if_abap_behv=>fc-o-disabled ).
+
+      DATA(lv_can_submit) = COND #(
+        WHEN lv_role = 'OFFICER' AND ls_rec-Status = 'DRAFT'
+        THEN if_abap_behv=>fc-o-enabled
+        ELSE if_abap_behv=>fc-o-disabled ).
+
+      APPEND VALUE #(
+        %tky                  = ls_rec-%tky
+        %update               = lv_granted
+        %delete               = lv_granted
+        %action-Edit          = lv_granted
+        %action-submitRecord  = lv_can_submit
+        %action-approveRecord = lv_can_approve
+        %action-rejectRecord  = lv_can_approve
+      ) TO result.
+    ENDLOOP.
+  ENDMETHOD.
 
 
 

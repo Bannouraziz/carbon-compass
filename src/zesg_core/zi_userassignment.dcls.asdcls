@@ -1,0 +1,9 @@
+@EndUserText.label: 'User Assignment Aspect'
+define accesspolicy ZI_UserAssignment {
+  define aspect ZI_UserAssignment
+    as select from ZI_UserAssignment
+    with user element UserId
+  {
+    FacilityId
+  }
+}

@@ -1,0 +1,6 @@
+@EndUserText.label: 'Access Control for Emission Record'
+@MappingRole: true
+define role ZI_EmissionRecord {
+  grant select on ZI_EmissionRecord
+    where (FacilityId) = aspect ZI_UserAssignment;
+}
