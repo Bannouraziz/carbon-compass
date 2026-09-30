@@ -1,0 +1,5 @@
+CLASS zbp_i_userassignment DEFINITION PUBLIC ABSTRACT FINAL FOR BEHAVIOR OF zi_userassignment.
+ENDCLASS.
+
+CLASS zbp_i_userassignment IMPLEMENTATION.
+ENDCLASS.

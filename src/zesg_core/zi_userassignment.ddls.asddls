@@ -7,5 +7,7 @@ define root view entity ZI_UserAssignment
 {
   key user_id     as UserId,
   key facility_id as FacilityId,
-      role_type   as RoleType
+      role_type   as RoleType,
+            last_changed_at as LastChangedAt
+      
 }

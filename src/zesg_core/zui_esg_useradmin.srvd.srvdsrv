@@ -1,0 +1,4 @@
+@EndUserText.label: 'ESG User Administration'
+define service ZUI_ESG_USERADMIN {
+  expose ZC_UserAssignment as UserAssignment;
+}

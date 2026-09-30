@@ -1,0 +1,31 @@
+managed implementation in class zbp_i_userassignment unique;
+strict(2);
+with draft;
+
+define behavior for ZI_UserAssignment alias UserAssignment
+persistent table zesg_usr_assign
+draft table zesg_usr_asgn_d
+lock master total etag LastChangedAt
+authorization master ( global )
+{
+  create;
+  update;
+  delete;
+
+  field ( readonly : update ) UserId, FacilityId;
+  field ( readonly ) LastChangedAt;
+
+  draft action Edit;
+  draft action Activate;
+  draft action Discard;
+  draft action Resume;
+  draft determine action Prepare;
+
+  mapping for zesg_usr_assign
+  {
+    UserId        = user_id;
+    FacilityId    = facility_id;
+    RoleType      = role_type;
+    LastChangedAt = last_changed_at;
+  }
+}
