@@ -1,0 +1,190 @@
+{
+  "_version": "1.86.0",
+  "sap.app": {
+    "id": "zesg.emissionrecord",
+    "type": "application",
+    "i18n": "i18n/i18n.properties",
+    "applicationVersion": {
+      "version": "0.0.1"
+    },
+    "title": "{{appTitle}}",
+    "description": "{{appDescription}}",
+    "resources": "resources.json",
+    "sourceTemplate": {
+      "id": "@sap/generator-fiori:lrop",
+      "version": "1.33.0",
+      "toolsId": "9a216eef-d6a1-4092-9469-47b234a46018"
+    },
+    "dataSources": {
+      "annotation": {
+        "type": "ODataAnnotation",
+        "uri": "annotations/annotation.xml",
+        "settings": {
+          "localUri": "annotations/annotation.xml"
+        }
+      },
+      "mainService": {
+        "uri": "/sap/opu/odata4/sap/zui_esg_emissionrecord_o4/srvd/sap/zui_esg_emissionrecord/0001/",
+        "type": "OData",
+        "settings": {
+          "annotations": [
+            "annotation"
+          ],
+          "localUri": "localService/mainService/metadata.xml",
+          "odataVersion": "4.0"
+        }
+      }
+    }
+  },
+  "sap.ui": {
+    "technology": "UI5",
+    "icons": {
+      "icon": "",
+      "favIcon": "",
+      "phone": "",
+      "phone@2": "",
+      "tablet": "",
+      "tablet@2": ""
+    },
+    "deviceTypes": {
+      "desktop": true,
+      "tablet": true,
+      "phone": true
+    }
+  },
+  "sap.ui5": {
+    "flexEnabled": true,
+    "dependencies": {
+      "minUI5Version": "1.148.9",
+      "libs": {
+        "sap.m": {},
+        "sap.ui.core": {},
+        "sap.fe.templates": {}
+      }
+    },
+    "contentDensities": {
+      "compact": true,
+      "cozy": true
+    },
+    "models": {
+      "i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "settings": {
+          "bundleName": "zesg.emissionrecord.i18n.i18n"
+        }
+      },
+      "": {
+        "dataSource": "mainService",
+        "preload": true,
+        "settings": {
+          "operationMode": "Server",
+          "autoExpandSelect": true,
+          "earlyRequests": true
+        }
+      },
+      "@i18n": {
+        "type": "sap.ui.model.resource.ResourceModel",
+        "uri": "i18n/i18n.properties"
+      }
+    },
+    "resources": {
+      "css": []
+    },
+    "routing": {
+      "config": {},
+      "routes": [
+        {
+          "pattern": ":?query:",
+          "name": "EmissionRecordList",
+          "target": "EmissionRecordList"
+        },
+        {
+          "pattern": "EmissionRecord({key}):?query:",
+          "name": "EmissionRecordObjectPage",
+          "target": "EmissionRecordObjectPage"
+        },
+        {
+          "pattern": "EmissionRecord({key})/_Items({key2}):?query:",
+          "name": "EmissionRecordItemObjectPage",
+          "target": "EmissionRecordItemObjectPage"
+        }
+      ],
+      "targets": {
+        "EmissionRecordList": {
+          "type": "Component",
+          "id": "EmissionRecordList",
+          "name": "sap.fe.templates.ListReport",
+          "options": {
+            "settings": {
+              "contextPath": "/EmissionRecord",
+              "variantManagement": "Page",
+              "navigation": {
+                "EmissionRecord": {
+                  "detail": {
+                    "route": "EmissionRecordObjectPage"
+                  }
+                }
+              },
+              "controlConfiguration": {
+                "@com.sap.vocabularies.UI.v1.LineItem": {
+                  "tableSettings": {
+                    "type": "ResponsiveTable"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "EmissionRecordObjectPage": {
+          "type": "Component",
+          "id": "EmissionRecordObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "editableHeaderContent": false,
+              "contextPath": "/EmissionRecord",
+              "navigation": {
+                "_Items": {
+                  "detail": {
+                    "route": "EmissionRecordItemObjectPage"
+                  }
+                }
+              },
+              "content": {
+                "header": {
+                  "actions": {
+                    "GenerateReport": {
+                      "text": "Generate Report",
+                      "press": "zesg.emissionrecord.ext.ReportAction.openReport",
+                      "requiresSelection": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "EmissionRecordItemObjectPage": {
+          "type": "Component",
+          "id": "EmissionRecordItemObjectPage",
+          "name": "sap.fe.templates.ObjectPage",
+          "options": {
+            "settings": {
+              "editableHeaderContent": false,
+              "contextPath": "/EmissionRecord/_Items"
+            }
+          }
+        }
+      }
+    }
+  },
+  "sap.fiori": {
+    "registrationIds": [],
+    "archeType": "transactional"
+  },
+  "sap.fe": {
+    "app": {
+      "enableLazyLoading": true
+    }
+  }
+}

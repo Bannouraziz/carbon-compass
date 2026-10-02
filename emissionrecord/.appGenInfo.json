@@ -1,0 +1,33 @@
+{
+  "generationParameters": {
+    "generationDate": "Fri Oct 02 2026 08:59:34 GMT+0000 (Coordinated Universal Time)",
+    "generatorPlatform": "SAP Business Application Studio",
+    "serviceType": "SAP System (ABAP Cloud)",
+    "metadataFilename": "",
+    "serviceUrl": "https://cb6549d4-2ebc-4106-94c5-35da55fca11f.abap.ap21.hana.ondemand.com/sap/opu/odata4/sap/zui_esg_emissionrecord_o4/srvd/sap/zui_esg_emissionrecord/0001/",
+    "appName": "emissionrecord",
+    "appTitle": "Emession record",
+    "appDescription": "Emession record",
+    "appNamespace": "zesg",
+    "ui5Theme": "sap_horizon",
+    "ui5Version": "1.148.9",
+    "enableEslint": true,
+    "enableTypeScript": false,
+    "showMockDataInfo": true,
+    "generatorVersion": "1.33.0",
+    "template": "List Report Page V4",
+    "generatorName": "SAP Fiori Application Generator",
+    "entityRelatedConfig": [
+      {
+        "type": "Main Entity",
+        "value": "EmissionRecord"
+      },
+      {
+        "type": "Navigation Entity",
+        "value": "_Items"
+      }
+    ],
+    "launchText": "To launch the generated application, run the following from the generated application root folder:\n\n```\n    npm start\n```",
+    "valueHelpDownloaded": true
+  }
+}
