@@ -26,21 +26,26 @@ authorization master ( instance )
   action submitRecord result [1] $self;
   action approveRecord result [1] $self;
   action rejectRecord result [1] $self;
-
+action generateReport result [1] $self;
+determination setInitialRecordValues on modify { create; }
   validation validateBeforeSubmit on save { field Status; }
+
 
   mapping for zesg_emrec
   {
     EmissionRecordId  = emissionrecord_id;
     FacilityId        = facility_id;
     ReportingPeriod   = reporting_period;
+    ReportingDate     = reporting_date;
     Scope             = scope;
     Status            = status;
     TotalCO2e         = total_co2e;
+    Notes             = notes;
     CreatedBy         = created_by;
     CreatedAt         = created_at;
     LastChangedBy     = last_changed_by;
     LastChangedAt     = last_changed_at;
+    LocalLastChangedAt = local_last_changed_at;
   }
 }
 define behavior for ZI_EmissionRecordItem alias EmissionRecordItem
@@ -52,11 +57,11 @@ authorization dependent by _EmissionRecord
   update;
   delete;
 
-field ( readonly, numbering : managed ) EmissionRecordItemId;
-field ( readonly ) EmissionRecordId,CO2e;
-determination calculateItemCO2e on save { field Quantity, ActivityType; }
+  field ( readonly, numbering : managed ) EmissionRecordItemId;
+  field ( readonly ) EmissionRecordId, CO2e;
 
-determination calculateTotalCO2e on save { field CO2e; }
+  determination calculateItemCO2e on save { field Quantity, ActivityType; }
+
   association _EmissionRecord;
 
   mapping for zesg_emrecitm
@@ -65,8 +70,8 @@ determination calculateTotalCO2e on save { field CO2e; }
     EmissionRecordId      = emissionrecord_id;
     AssetId               = asset_id;
     ActivityType          = activity_type;
-    Quantity               = quantity;
-    Unit                   = unit;
-    CO2e                   = co2e;
+    Quantity              = quantity;
+    Unit                  = unit;
+    CO2e                  = co2e;
   }
 }

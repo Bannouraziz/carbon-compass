@@ -1,0 +1,4 @@
+@EndUserText.label: 'ESG Analytics'
+define service ZUI_ESG_ANALYTICS {
+  expose ZC_EmissionAnalytics as EmissionAnalytics;
+}

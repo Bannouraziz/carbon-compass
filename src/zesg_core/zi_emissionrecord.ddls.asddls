@@ -8,21 +8,25 @@ define root view entity ZI_EmissionRecord
   association to ZI_Facility as _Facility
     on $projection.FacilityId = _Facility.FacilityId
 {
-  key emissionrecord_id  as EmissionRecordId,
-      facility_id        as FacilityId,
-      reporting_period   as ReportingPeriod,
-      scope              as Scope,
-      status             as Status,
-      total_co2e         as TotalCO2e,
+  key emissionrecord_id        as EmissionRecordId,
+      facility_id              as FacilityId,
+      reporting_period         as ReportingPeriod,
+      reporting_date           as ReportingDate,
+      scope                    as Scope,
+      status                   as Status,
+      total_co2e               as TotalCO2e,
+      notes                    as Notes,
 
       @Semantics.user.createdBy: true
-      created_by         as CreatedBy,
+      created_by               as CreatedBy,
       @Semantics.systemDateTime.createdAt: true
-      created_at         as CreatedAt,
+      created_at               as CreatedAt,
       @Semantics.user.lastChangedBy: true
-      last_changed_by    as LastChangedBy,
+      last_changed_by          as LastChangedBy,
       @Semantics.systemDateTime.lastChangedAt: true
-      last_changed_at    as LastChangedAt,
+      last_changed_at          as LastChangedAt,
+      @Semantics.systemDateTime.localInstanceLastChangedAt: true
+      local_last_changed_at    as LocalLastChangedAt,
 
       _Items,
       _Facility

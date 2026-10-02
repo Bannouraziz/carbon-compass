@@ -18,6 +18,8 @@ define behavior for ZC_EmissionRecord alias EmissionRecord
   use action submitRecord;
   use action approveRecord;
   use action rejectRecord;
+   use action generateReport;
+
 }
 
 define behavior for ZC_EmissionRecordItem alias EmissionRecordItem
