@@ -17,14 +17,14 @@
   maxItems: 200,
   sortOrder: [{ by: 'ReportingPeriod', direction: #DESC }],
   visualizations: [
-    { type: #AS_CHART,    qualifier: 'ByScope' },
+    { type: #AS_CHART, qualifier: 'ByFacility' },
     { type: #AS_LINEITEM }
   ]
 }]
 @UI.selectionVariant: [{ qualifier: 'allRecords', text: 'All records' }]
 
 define view entity ZC_EmissionAnalytics
-  as select from ZI_EmissionRecord
+  as select from ZI_EmissionAnalyticsCube
 {
       @UI.selectionField: [{ position: 10 }]
       @UI.lineItem:       [{ position: 10 }]
@@ -54,5 +54,5 @@ define view entity ZC_EmissionAnalytics
 
       @UI.dataPoint: { qualifier: 'RecordCountDP', title: 'Records' }
       @Aggregation.default: #SUM
-      cast( 1 as abap.int4 ) as RecordCount
+      RecordCount
 }

@@ -25,6 +25,8 @@ CLASS zcl_esg_seed_data IMPLEMENTATION.
     ENDIF.
 
     SELECT DISTINCT facility_id FROM zesg_emrec
+      WHERE facility_id <> @space
+        AND created_by <> @lc_seeder
       INTO TABLE @DATA(lt_fac_db).
     DATA lt_fac TYPE STANDARD TABLE OF zesg_emrec-facility_id WITH EMPTY KEY.
     lt_fac = VALUE #( FOR f IN lt_fac_db ( f-facility_id ) ).

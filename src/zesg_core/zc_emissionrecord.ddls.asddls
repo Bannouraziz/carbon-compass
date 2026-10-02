@@ -22,15 +22,15 @@ define root view entity ZC_EmissionRecord
       @UI.lineItem: [
         { type: #FOR_ACTION, dataAction: 'submitRecord',    label: 'Submit',          position: 10 },
         { type: #FOR_ACTION, dataAction: 'approveRecord',   label: 'Approve',         position: 20 },
-        { type: #FOR_ACTION, dataAction: 'rejectRecord',    label: 'Reject',          position: 30 },
-        { type: #FOR_ACTION, dataAction: 'generateReport',  label: 'Generate Report', position: 40 }
+        { type: #FOR_ACTION, dataAction: 'rejectRecord',    label: 'Reject',          position: 30 }
+   
       ]
 
       @UI.identification: [
         { type: #FOR_ACTION, dataAction: 'submitRecord',    label: 'Submit' },
         { type: #FOR_ACTION, dataAction: 'approveRecord',   label: 'Approve' },
-        { type: #FOR_ACTION, dataAction: 'rejectRecord',    label: 'Reject' },
-        { type: #FOR_ACTION, dataAction: 'generateReport',  label: 'Generate Report' }
+        { type: #FOR_ACTION, dataAction: 'rejectRecord',    label: 'Reject' }
+    
       ]
 
   key EmissionRecordId,
