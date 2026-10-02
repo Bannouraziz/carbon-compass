@@ -1,510 +1,333 @@
-# 🌿 Carbon Compass — SAP BTP ESG Emissions Tracker
+# 🌿 Carbon Compass — ESG Emissions Tracker on SAP BTP
 
-> Full-stack capstone project built on **SAP BTP ABAP Trial** — combining ABAP Cloud RAP, SAP Fiori Elements (transactional + analytical), row-level authorization, a Node.js MCP server for LLM integration, and a standalone report server for professional PDF reporting — end-to-end ESG emissions tracking, analytics and reporting.
+Full-stack ESG (greenhouse-gas) emissions tracking built on a **SAP BTP ABAP Environment trial**: an ABAP Cloud **RAP** backend, two **SAP Fiori elements** apps (transactional + analytical), facility-based authorization, a **Node.js MCP server** that lets Claude Desktop query the data in natural language, and a standalone **report server** that renders print-ready PDF reports with charts.
 
 ---
 
-## 📋 Table of Contents
+## Contents
 
-- [Overview](#overview)
+- [What it does](#what-it-does)
 - [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Data Model](#data-model)
-- [ABAP Backend](#abap-backend)
-- [Fiori Elements Frontend](#fiori-elements-frontend)
-- [ESG Analytics](#esg-analytics)
-- [Authorization & Row-Level Security](#authorization--row-level-security)
-- [User Management](#user-management)
-- [MCP Server](#mcp-server)
-- [Report Server](#report-server)
-- [Emission Factors](#emission-factors)
-- [Workflow & Approval](#workflow--approval)
-- [BTP Trial Limitations](#btp-trial-limitations)
-- [Local Setup](#local-setup)
-- [Sample Data](#sample-data)
-- [Roadmap](#roadmap)
+- [Repository layout](#repository-layout)
+- [Data model](#data-model)
+- [ABAP backend](#abap-backend)
+- [Authorization](#authorization)
+- [OData services](#odata-services)
+- [Fiori apps](#fiori-apps)
+- [Report server](#report-server)
+- [MCP server](#mcp-server)
+- [Sample data](#sample-data)
+- [Getting started](#getting-started)
+- [BTP trial constraints](#btp-trial-constraints)
+- [Known gaps and roadmap](#known-gaps-and-roadmap)
 
 ---
 
-## Overview
+## What it does
 
-**Carbon Compass** is a production-style ESG (Environmental, Social & Governance) emissions tracking system built entirely on SAP Business Technology Platform (BTP). It allows sustainability managers to:
-
-- Record and categorize greenhouse gas emissions by facility, scope, and activity type
-- Automatically calculate CO₂e values using configurable emission factors
-- Submit records through a structured approval workflow (Draft → Submitted → Approved/Rejected)
-- Query and analyze emissions data via a conversational AI interface through the Model Context Protocol (MCP)
-
-The project was built as a portfolio capstone to demonstrate full-stack SAP Cloud Native development — from ABAP Cloud objects in ADT through to a live AI tool integration via Claude Desktop.
+- Record emissions per **facility**, **reporting period** and **scope** (`SCOPE1`, `SCOPE2`, `SCOPE3`), with line items per **activity type**.
+- Calculate CO₂e automatically: `CO2e = Quantity × emission factor`, summed into the record's `TotalCO2e`.
+- Move records through a status flow: `DRAFT` → `SUBMITTED` → `APPROVED` / `REJECTED`.
+- Restrict who can edit, submit and approve by **user ↔ facility ↔ role** assignments.
+- Analyse emissions by facility, scope, period and status in an analytical Fiori app with KPI tags.
+- Open a **print-ready PDF report** for one record, or a summary for several, from the browser.
+- Ask Claude questions about the live data through the **Model Context Protocol (MCP)**.
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        SAP BTP ABAP Trial                       │
-│                                                                 │
-│  ┌──────────────┐    ┌──────────────┐    ┌───────────────────┐  │
-│  │  CDS Views   │    │  RAP Behavior│    │  HTTP Service     │  │
-│  │  ZI_ / ZC_  │───▶│  ZESG_...    │    │  ZS_ESG_HTTP_     │  │
-│  │  (Interface/ │    │  (Actions,   │    │  SERVICE          │  │
-│  │  Projection) │    │  Validations,│    │  (MCP bridge)     │  │
-│  └──────────────┘    │  Determins.) │    └────────┬──────────┘  │
-│                      └──────────────┘             │             │
-│  ┌──────────────────────────────────┐             │             │
-│  │  SAP Fiori Elements UI           │             │             │
-│  │  (List Report + Object Page)     │             │             │
-│  │  OData V4 / Draft-enabled        │             │             │
-│  └──────────────────────────────────┘             │             │
-└──────────────────────────────────────────────────┼─────────────┘
-                                                   │ HTTP + Basic Auth
-                                                   ▼
-                                    ┌──────────────────────────┐
-                                    │   Node.js MCP Server     │
-                                    │   (stdio transport)      │
-                                    │                          │
-                                    │  Tools:                  │
-                                    │  • get_emission_records  │
-                                    │  • get_emission_items    │
-                                    │  • get_facilities        │
-                                    │  • get_emission_factors  │
-                                    └──────────────┬───────────┘
-                                                   │ MCP protocol
-                                                   ▼
-                                    ┌──────────────────────────┐
-                                    │   Claude Desktop         │
-                                    │   (LLM interface)        │
-                                    │                          │
-                                    │  Natural language ESG    │
-                                    │  queries over live data  │
-                                    └──────────────────────────┘
+                 ┌───────────────────────── SAP BTP ABAP Environment (trial) ─────────────────────────┐
+                 │                                                                                    │
+                 │  Tables ──▶ ZI_ interface views ──▶ ZC_ projection views ──▶ Service definitions   │
+                 │               + RAP behavior (managed, draft, strict(2))      + OData V4 bindings  │
+                 │                                                                                    │
+                 │  DCL (ZI_EmissionRecord) + instance authorization (ZBP_I_EMISSIONRECORD)           │
+                 │  HTTP service ZS_ESG_HTTP_SERVICE  (JSON bridge for the MCP server)                │
+                 └──────────┬───────────────────────────────┬──────────────────────────────┬──────────┘
+                            │ OData V4                      │ OData V4                     │ HTTP + Basic auth
+                            ▼                               ▼                              ▼
+              ┌───────────────────────────┐   ┌───────────────────────────┐   ┌────────────────────────┐
+              │ emissionrecord/           │   │ esganalytics/             │   │ mcp-server/            │
+              │ Fiori elements            │   │ Fiori elements            │   │ Node.js, stdio         │
+              │ List Report + Object Page │   │ analytical app + KPIs     │   │ 4 tools for Claude     │
+              └─────────────┬─────────────┘   └───────────────────────────┘   │ Desktop (static data   │
+                            │ "Generate Report" button                        │ fallback)              │
+                            │ record + items as base64url in the URL          └────────────────────────┘
+                            ▼
+              ┌───────────────────────────┐
+              │ report-server/            │
+              │ Node.js / Express         │
+              │ GET /report?d=…           │
+              │ POST /report-batch        │
+              │ Chart.js, print to PDF    │
+              └───────────────────────────┘
 ```
 
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| **ABAP Backend** | SAP ABAP Cloud (BTP ABAP Environment Trial) |
-| **Data Modeling** | ABAP CDS Views (Interface + Projection pattern) |
-| **Business Logic** | RAP — Managed BO, strict(2), draft-enabled |
-| **UI** | SAP Fiori Elements — List Report + Object Page (transactional) and Analytical List Page (analytics), OData V4 |
-| **Analytics** | ABAP CDS analytical cube (`@Analytics.dataCategory: #CUBE`) + query |
-| **Authorization** | DCL access control (row-level) + `ZI_UserAssignment` user↔facility mapping |
-| **HTTP Bridge** | Custom ABAP HTTP Service (`ZS_ESG_HTTP_SERVICE`) |
-| **MCP Server** | Node.js 20, `@modelcontextprotocol/sdk`, `zod`, `node-fetch` |
-| **Report Server** | Node.js 20, Express, Chart.js — HTML + print-to-PDF reports |
-| **AI Interface** | Claude Desktop (Anthropic) via MCP protocol |
-| **Dev Tools** | ABAP Development Tools (ADT / Eclipse), abapGit, VS Code |
+The report server never talks to SAP in its main mode. The Fiori app already has the record in its binding context, so it passes the data to the report server, which therefore holds no credentials.
 
 ---
 
-## Project Structure
+## Repository layout
 
 ```
 carbon-compass/
-│
-├── src/zesg_core/            # All ABAP Cloud objects (pushed via abapGit)
-│   ├── zi_emissionrecord.*            # Interface view + behavior + DCL — header
-│   ├── zi_emissionrecorditem.*        # Interface view — line items
-│   ├── zc_emissionrecord.*            # Projection view + behavior — header
-│   ├── zc_emissionrecorditem.*        # Projection view — items
-│   ├── zi_emissionanalyticscube.*     # Analytical cube (@Analytics #CUBE)
-│   ├── zc_emissionanalytics.*         # Analytics query projection
-│   ├── zi_userassignment.* / zc_*     # User↔Facility assignment + DCL aspect
-│   ├── zui_esg_emissionrecord_o4.srvb # OData V4 binding — transactional app
-│   ├── zui_esg_analytics_o4.srvb      # OData V4 binding — analytics app
-│   └── zui_esg_useradmin_o4.srvb      # OData V4 binding — user admin app
-│
-├── emissionrecord/           # Fiori Elements app — List Report + Object Page
-├── esganalytics/             # Fiori Elements app — Analytical List Page
-│
-├── mcp-server/               # Node.js MCP server — 4 ESG tools for Claude Desktop
-│   ├── index.js
-│   └── package.json
-│
-└── report-server/            # Node.js/Express — professional PDF report server
-    ├── server.js             # /report (single) + /report-batch (summary)
-    ├── INTEGRATION.md        # How to wire it to the Fiori app via URL params
-    └── package.json
+├── src/zesg_core/        ABAP objects serialized by abapGit (package ZESG_CORE)
+├── emissionrecord/       Fiori elements app: List Report + Object Page (zesg.emissionrecord)
+├── esganalytics/         Fiori elements app: analytical app with KPI tags (esganalytics)
+├── mcp-server/           MCP server for Claude Desktop
+├── report-server/        Express report server (single + batch reports)
+└── .abapgit.xml          abapGit settings (starting folder /src/, full folder logic)
 ```
 
----
+Main objects in `src/zesg_core/`:
 
-## Data Model
-
-### Entity Relationship
-
-```
-ZI_Facility (master data)
-    │
-    └──< ZI_EmissionRecord (header)
-              │  EmissionRecordId (UUID, managed numbering)
-              │  FacilityId
-              │  ReportingPeriod (e.g. "2024-Q4")
-              │  Scope (SCOPE1 / SCOPE2 / SCOPE3)
-              │  Status (DRAFT / SUBMITTED / APPROVED / REJECTED)
-              │  TotalCO2e (auto-calculated)
-              │
-              └──< ZI_EmissionRecordItem (line items)
-                        ItemId (UUID, managed numbering)
-                        ActivityType (ELEC / HEAT / DIESEL / GAS / ...)
-                        Quantity
-                        Unit
-                        CO2e (auto-calculated = Quantity × EmissionFactor)
-
-ZI_EmissionFactor (master data)
-    ActivityType → factor_value (kg CO2e per unit)
-```
-
-### Database Tables
-
-| Table | Description |
+| Area | Objects |
 |---|---|
-| `ZESG_EMREC` | Emission record headers |
-| `ZESG_EMITEM` | Emission record line items |
-| `ZESG_FACILITY` | Facility master data |
-| `ZESG_EMFACTOR` | Emission factor reference data |
+| Tables | `ZESG_EMREC`, `ZESG_EMRECITM`, `ZESG_FACILITY`, `ZESG_ASSET`, `ZESG_EMFACTOR`, `ZESG_USR_ASSIGN`, plus draft tables `ZESG_EMREC_D`, `ZESG_EMRECITM_D`, `ZESG_FACILITY_D`, `ZESG_ASSET_D`, `ZESG_EMFACTOR_D`, `ZESG_USR_ASGN_D` |
+| Interface views | `ZI_EmissionRecord`, `ZI_EmissionRecordItem`, `ZI_Facility`, `ZI_Asset`, `ZI_EmissionFactor`, `ZI_UserAssignment`, `ZI_EmissionAnalyticsCube` |
+| Projection views | `ZC_EmissionRecord`, `ZC_EmissionRecordItem` (+ metadata extension), `ZC_Facility`, `ZC_Asset`, `ZC_EmissionFactor`, `ZC_UserAssignment`, `ZC_EmissionAnalytics` |
+| Behavior | Interface and projection BDEFs for each BO, handler classes `ZBP_I_*` |
+| Access control | `ZI_EmissionRecord` (role), `ZI_UserAssignment` (aspect) |
+| Services | `ZUI_ESG_EMISSIONRECORD`, `ZUI_ESG_ANALYTICS`, `ZUI_ESG_MASTERDATA`, `ZUI_ESG_USERADMIN` (definitions and OData V4 bindings) |
+| HTTP | `ZCL_ESG_HTTP_SERVICE`, `ZS_ESG_HTTP_SERVICE`, communication scenario `ZESG_ESG_MCP` |
+| Utilities | `ZCL_ESG_SEED_DATA` (demo data generator) |
 
 ---
 
-## ABAP Backend
+## Data model
 
-### CDS Views
-
-The project follows the **ZI_ / ZC_ naming convention**:
-
-- **`ZI_*` (Interface views)** — close to the database, expose all fields, define associations, used by behavior definition
-- **`ZC_*` (Projection/Consumption views)** — add UI annotations (`@UI.lineItem`, `@UI.facet`, `@UI.selectionField`), define value helps, expose via service binding
-
-### RAP Behavior Definition
-
-```abap
-managed implementation in class ZBP_I_EMISSIONRECORD unique;
-strict ( 2 );
-with draft;
-
-define behavior for ZI_EmissionRecord alias EmissionRecord
-  persistent table zesg_emrec
-  draft table zesg_emrec_d
-  lock master
-  authorization master ( global )
-  etag master LocalLastChangedAt
-{
-  field ( numbering : managed, readonly ) EmissionRecordId;
-
-  create; update; delete;
-  draft action Edit;
-  draft action Activate optimized;
-  draft action Discard;
-  draft action Resume;
-  draft determine action Prepare;
-
-  action submitRecord  result [1] $self;
-  action approveRecord result [1] $self;
-  action rejectRecord  result [1] $self;
-
-  determination calculateItemCO2e on save { field Quantity, ActivityType; }
-  validation validateBeforeSubmit on save { ... }
-
-  association _Items { create; with draft; }
-}
+```
+ZI_Facility ──< ZI_Asset
+     │
+     └──< ZI_EmissionRecord (root)  ──composition──<  ZI_EmissionRecordItem ──> ZI_EmissionFactor
+              │                                              │
+              └── FacilityId, ReportingPeriod, Scope,        └── AssetId, ActivityType,
+                  Status, TotalCO2e, Notes, admin fields         Quantity, Unit, CO2e
 ```
 
-### Business Logic
-
-**CO₂e Calculation** (`calculateItemCO2e` determination, fires ON SAVE):
-1. For each changed item, reads `ActivityType` and `Quantity`
-2. Looks up `factor_value` from `ZESG_EMFACTOR` table
-3. Sets `CO2e = Quantity × factor_value` on the item
-4. Navigates to parent record and sums all sibling items' CO₂e into `TotalCO2e`
-
-**Workflow Actions:**
-- `submitRecord` — sets Status = `SUBMITTED`; only enabled when Status = `DRAFT`
-- `approveRecord` — sets Status = `APPROVED`; only enabled when Status = `SUBMITTED`
-- `rejectRecord` — sets Status = `REJECTED`; only enabled when Status = `SUBMITTED`
-
-**Validation** (`validateBeforeSubmit`):
-- Blocks submission if `TotalCO2e ≤ 0` — prevents empty records from entering the approval flow
-
-**Instance Feature Control** (`get_instance_features`):
-- Dynamically enables/disables the three workflow action buttons based on current record Status — the Fiori UI shows only the contextually valid action
-
-### HTTP Service (MCP Bridge)
-
-Since BTP trial's Communication Arrangements are not available for external machine-to-machine auth, a custom ABAP HTTP service (`ZS_ESG_HTTP_SERVICE`) was created as a bridge. It reads the `X-ESG-Entity` header and dispatches to the appropriate SELECT query, returning JSON.
-
-The service is secured via a Communication Scenario (`ZESG_ESG_MCP`) published locally in ADT.
+| Table | Key | Main fields |
+|---|---|---|
+| `ZESG_EMREC` | `EMISSIONRECORD_ID` (UUID) | `FACILITY_ID`, `REPORTING_PERIOD` (CHAR 7, e.g. `2025-Q1`), `REPORTING_DATE`, `SCOPE` (CHAR 6), `STATUS` (CHAR 10), `TOTAL_CO2E`, `NOTES` (CHAR 500), created/changed admin fields |
+| `ZESG_EMRECITM` | `EMISSIONRECORDITEM_ID` (UUID) | `EMISSIONRECORD_ID`, `ASSET_ID`, `ACTIVITY_TYPE`, `QUANTITY`, `UNIT`, `CO2E` |
+| `ZESG_FACILITY` | `FACILITY_ID` | `FACILITY_NAME`, `COUNTRY`, `BUSINESS_UNIT` |
+| `ZESG_ASSET` | `ASSET_ID` | `FACILITY_ID`, `ASSET_NAME`, `ASSET_TYPE` |
+| `ZESG_EMFACTOR` | `ACTIVITY_TYPE` | `DESCRIPTION`, `SCOPE`, `FACTOR_VALUE`, `UNIT` |
+| `ZESG_USR_ASSIGN` | `USER_ID`, `FACILITY_ID` | `ROLE_TYPE` (`AUDITOR`, `OFFICER`, `MANAGER`) |
 
 ---
 
-## Fiori Elements Frontend
+## ABAP backend
 
-- **List Report** — filterable by Status, Scope, Facility, Reporting Period; sortable by TotalCO2e
-- **Object Page** — shows header fields + emission items table in a facet
-- **Draft-enabled** — users can start a record, save as draft, and return to it later
-- **Action buttons** — Submit / Approve / Reject rendered contextually based on Status
-- **OData V4** — served by SAP standard gateway from the service binding
+### Emission record BO (`ZI_EmissionRecord`)
 
----
+Managed, draft-enabled, `strict(2)`, with `lock master total etag LastChangedAt` and `authorization master ( instance )`. Implementation class: `ZBP_I_EMISSIONRECORD`.
 
-## ESG Analytics
-
-An analytical model for multidimensional reporting on top of the transactional data:
-
-- **`ZI_EmissionAnalyticsCube`** — CDS analytical cube (`@Analytics.dataCategory: #CUBE`) exposing CO₂e as a measure with facility, scope, activity type, and reporting period as dimensions
-- **`ZC_EmissionAnalytics`** — query projection consumed by the UI
-- **`ZUI_ESG_ANALYTICS_O4`** — OData V4 service binding
-- **`esganalytics/`** — Fiori Elements **Analytical List Page (ALP)** app with interactive charts and drill-down by dimension
-
-This lets users slice emissions by facility/scope/period without leaving Fiori.
-
----
-
-## Authorization & Row-Level Security
-
-Access to emission records is restricted per user using a **DCL access control** combined with a user↔facility assignment table — a user only sees records for facilities they are assigned to.
-
-```abap
-@MappingRole: true
-define role ZI_EmissionRecord {
-  grant select on ZI_EmissionRecord
-    where (FacilityId) = aspect ZI_UserAssignment;
-}
-```
-
-- **`ZI_UserAssignment`** — maps a BTP user to one or more facilities (persisted in `ZESG_USR_ASSIGN`)
-- The DCL filters `ZI_EmissionRecord` so each user's list is scoped to their facilities
-- Enforced consistently across the Fiori apps, the OData services, and any consumer
-
----
-
-## User Management
-
-A dedicated admin app to maintain who can see what:
-
-- **`ZC_UserAssignment`** (behavior-enabled) — create/update/delete user↔facility assignments
-- **`ZUI_ESG_USERADMIN`** — OData V4 service (`expose ZC_UserAssignment as UserAssignment`)
-- Administrators assign BTP users to facilities, which immediately drives the row-level security above
-
----
-
-## MCP Server
-
-The Node.js MCP server exposes four tools that Claude Desktop can call to query ESG data conversationally.
-
-### Tools
-
-| Tool | Description |
+| Element | Behavior |
 |---|---|
-| `get_emission_records` | Fetch all emission records; optional filters: `FacilityId`, `ReportingPeriod`, `Scope`, `Status` |
-| `get_emission_items` | Fetch line items for a given `EmissionRecordId` |
-| `get_facilities` | Fetch all facilities |
-| `get_emission_factors` | Fetch emission factors; optional filter: `ActivityType` |
+| `EmissionRecordId` | Read-only, managed UUID numbering |
+| `Status`, `TotalCO2e`, admin fields | Read-only for the UI |
+| Draft actions | `Edit`, `Activate`, `Discard`, `Resume`, `Prepare` |
+| `setInitialRecordValues` (determination on modify, create) | Sets `Status = 'DRAFT'` and `ReportingDate` to today |
+| `calculateItemCO2e` (determination on save, on items) | Looks up `FACTOR_VALUE` in `ZESG_EMFACTOR`, sets `CO2e = Quantity × factor`, then sums all items into the parent's `TotalCO2e` |
+| `submitRecord`, `approveRecord`, `rejectRecord` | Set `Status` to `SUBMITTED`, `APPROVED`, `REJECTED` |
+| `generateReport` | Writes a plain-text summary of the record into `Notes` (the visual report is produced by the report server, see below) |
+| `validateBeforeSubmit` (on save) | Rejects a `SUBMITTED` record whose `TotalCO2e` is not greater than zero |
 
-### Transport
+The items entity (`ZI_EmissionRecordItem`) is a composition child: lock and authorization dependent on the parent, `CO2e` and `EmissionRecordId` read-only.
 
-stdio — registered in Claude Desktop via `claude_desktop_config.json`:
+### Master data and user administration
+
+Facility, Asset, Emission Factor and User Assignment are separate managed, draft-enabled BOs with their own projections. `ZUI_ESG_MASTERDATA` exposes the first three, `ZUI_ESG_USERADMIN` exposes `ZC_UserAssignment` (global authorization).
+
+---
+
+## Authorization
+
+Two layers work together.
+
+**1. Row-level read access (DCL).** `ZI_EmissionRecord` has an access control role that filters by facility through the `ZI_UserAssignment` aspect (`with user element UserId`), so a user only reads records of facilities assigned to them in `ZESG_USR_ASSIGN`.
+
+**2. Instance authorization (`get_instance_authorizations`).** For each record the handler decides what the current user may do:
+
+| Situation | Update / delete / Edit | Submit | Approve / reject |
+|---|---|---|---|
+| User has **no assignments at all** (treated as owner/admin) | yes | yes | yes |
+| User has assignments, **none for this facility** | no | no | no |
+| `AUDITOR` | no | no | no |
+| `OFFICER` | yes | only when `DRAFT` | no |
+| `MANAGER` | yes | only when `DRAFT` | only when `SUBMITTED` |
+
+The fallback for users without assignments keeps the system usable on a fresh trial account, where nobody is assigned yet.
+
+---
+
+## OData services
+
+| Service definition | Exposes | OData V4 binding |
+|---|---|---|
+| `ZUI_ESG_EMISSIONRECORD` | `EmissionRecord`, `EmissionRecordItem` | `ZUI_ESG_EMISSIONRECORD_O4` (UI), `ZAPI_ESG_EMISSIONRECORD_O4` (A2X) |
+| `ZUI_ESG_ANALYTICS` | `EmissionAnalytics` | `ZUI_ESG_ANALYTICS_O4` |
+| `ZUI_ESG_MASTERDATA` | `Facility`, `Asset`, `EmissionFactor` | `ZUI_ESG_MASTERDATA_O4` |
+| `ZUI_ESG_USERADMIN` | `UserAssignment` | `ZUI_ESG_USERADMIN_O4` |
+
+Path pattern: `/sap/opu/odata4/sap/<binding>/srvd/sap/<service>/0001/`
+
+---
+
+## Fiori apps
+
+### `emissionrecord/` — transactional app
+
+- **List Report** with the columns Facility, Reporting Period, Scope, Status and Total CO₂e, plus Submit / Approve / Reject actions from the CDS annotations.
+- **Object Page** with the general information section and an items table (items have their own object page).
+- Draft handling (create, save as draft, resume).
+- **Generate Report** header button: a custom action configured in `manifest.json` and implemented in `webapp/ext/ReportAction.js`. It reads the header and the items from the binding context, encodes them as base64url JSON and opens `http://localhost:3000/report?d=…` in a new tab.
+
+### `esganalytics/` — analytical app
+
+- Based on `ZC_EmissionAnalytics`, which sits on the analytical cube `ZI_EmissionAnalyticsCube` (`@Analytics.dataCategory: #CUBE`, `TotalCO2e` and `RecordCount` as summed measures).
+- Chart annotations for CO₂e by scope (donut) and by facility (bar), combined with the table (Chart, Table and hybrid views), with filter fields for facility, period, scope and status.
+- **KPI tags** for Total CO₂e and Record Count, defined in the app's local `annotation.xml`.
+- The local annotation file also declares `Aggregation.ApplySupported` (aggregate, groupby, filter) on the entity type, because the service does not advertise group-by support and the chart would otherwise collapse into a single total.
+- Table configured as a responsive table with multi-selection.
+
+Both apps start with `npm start` inside their folder (Fiori tools proxy to the ABAP system; see [Getting started](#getting-started)).
+
+---
+
+## Report server
+
+`report-server/` is a small Express app that renders HTML reports with a dedicated print stylesheet, so *Download PDF* (browser print) produces a clean A4 document.
+
+| Route | Purpose |
+|---|---|
+| `GET /report?d=<payload>` | One record. `d` is `base64url(JSON)` of `{ "record": {…}, "items": [ … ] }` |
+| `POST /report-batch` | Summary of several records. Form field `payload` holds `{ "records": [ … ] }` |
+| `GET /report?id=<id>` | Fallback: reads the record from OData with the credentials in `.env` (or sample data when `MOCK=1` / `SAP_HOST` is unset) |
+
+- Single report: KPI tiles, donut of CO₂e by activity type, bar of quantity per item, items table, optional notes.
+- Batch report: KPI tiles (total CO₂e, record count, average, approved count), charts by scope, facility, reporting period and status, and a records table.
+- Charts are Chart.js and are recolored automatically for printing.
+- Values are HTML-escaped; invalid or missing payloads return an error page.
+
+Run it:
+
+```bash
+cd report-server
+npm install
+npm start          # http://localhost:3000
+```
+
+The payload shape and the controller snippet used by the Fiori app are described in [`report-server/INTEGRATION.md`](report-server/INTEGRATION.md).
+
+---
+
+## MCP server
+
+`mcp-server/` is a Node.js MCP server (stdio transport) built with `@modelcontextprotocol/sdk`, so Claude Desktop can answer questions about the emissions data.
+
+| Tool | Parameters | Returns |
+|---|---|---|
+| `get_emission_records` | optional `FacilityId`, `ReportingPeriod`, `Status`, `Scope` | Emission records |
+| `get_emission_items` | `EmissionRecordId` | Items of one record |
+| `get_facilities` | none | Facilities |
+| `get_emission_factors` | optional `ActivityType` | Emission factors |
+
+Each tool calls the ABAP HTTP service `ZS_ESG_HTTP_SERVICE` (`/sap/bc/http/sap/zs_esg_http_service`) with Basic auth and the request header `X-ESG-Entity: records | items | facilities | factors`. If the call fails (no credentials, 401, timeout), the server returns **built-in sample data**, so the tools still work for demos. Note that this sample data is independent of what is in your system.
+
+Claude Desktop configuration (`claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
     "carbon-compass-esg": {
       "command": "node",
-      "args": ["C:\\Users\\<user>\\carbon-compass\\mcp-server\\index.js"],
+      "args": ["<path-to-repo>/mcp-server/index.js"],
       "env": {
-        "ODATA_BASE_URL": "https://<your-btp-system>.abap-web.ap21.hana.ondemand.com",
-        "ODATA_USERNAME": "<btp-user>",
-        "ODATA_PASSWORD": "<btp-password>"
+        "ODATA_BASE_URL": "https://<your-system>.abap-web.<region>.hana.ondemand.com",
+        "ODATA_USERNAME": "<user>",
+        "ODATA_PASSWORD": "<password>"
       }
     }
   }
 }
 ```
 
-### Fallback Strategy
+---
 
-BTP trial does not support Communication Arrangements for machine-to-machine Basic Auth to the `abap-web` endpoint. The MCP server handles this gracefully:
+## Sample data
 
-1. Attempts a live HTTP call to the BTP system first (8-second timeout)
-2. If BTP returns 401, times out, or is unreachable → silently falls back to embedded static data
-3. Static data mirrors the production BTP records exactly
-4. When BTP auth is eventually resolved, live data takes over automatically — no code change needed
+`ZCL_ESG_SEED_DATA` fills the tables with demo data. Run it from ADT with **F9** (Run as ABAP Application).
+
+- Creates 60 records (change `lc_records`) with 2 to 5 items each, random scope, status, period and date.
+- Uses emission factors from `ZESG_EMFACTOR` (it stops if the table is empty) and facility IDs already used by other records, falling back to `FAC001` to `FAC004`.
+- Marks everything with `created_by = 'SEEDER'`; every run first deletes the previous seeded rows.
+- Writes straight to the tables, so seeded records are already active (no draft).
+
+Facilities, assets and emission factors are maintained through `ZUI_ESG_MASTERDATA`.
 
 ---
 
-## Report Server
-
-A standalone **Node.js / Express** server ([`report-server/`](report-server/)) that renders professional ESG reports as web pages that print cleanly to PDF. It needs **no connection to BTP** — the Fiori app passes the record data in the URL, so the server holds no credentials.
-
-### Routes
-
-| Route | Purpose |
-|---|---|
-| `GET /report?d=<payload>` | Single-record report. `d` = base64url-encoded JSON of `{ record, items }` |
-| `POST /report-batch` | Multi-record summary report. Form field `payload` = JSON `{ records: [...] }` |
-
-### Features
-
-- **Dark dashboard on screen, professional A4 document on print** — a dedicated print stylesheet (letterhead, serif headings, ruled tables, page-break control) so the PDF never looks like a screenshot
-- **Chart.js visualizations** — single report: CO₂e by activity type + quantity per item; batch: CO₂e by scope / facility / period and record count by status (charts recolor to dark ink for print)
-- **KPI tiles, totals, and a Download PDF button** (client-side `window.print()`)
-- **`MOCK=1` demo mode** for running without any data source
-
-### Integration
-
-The Fiori object page builds the URL from its binding context and opens the report in a new tab — see [`report-server/INTEGRATION.md`](report-server/INTEGRATION.md) for the controller snippet and payload shape.
-
----
-
-## Emission Factors
-
-Reference data used for CO₂e calculation:
-
-| Activity Type | Factor | Unit | Source |
-|---|---|---|---|
-| `ELEC` | 0.200 | kg CO₂e / kWh | EU grid average |
-| `HEAT` | 0.203 | kg CO₂e / kWh | District heating |
-| `DIESEL` | 0.264 | kg CO₂e / L | Diesel combustion |
-| `GAS` | 0.210 | kg CO₂e / m³ | Natural gas combustion |
-
-Factors are stored in the `ZESG_EMFACTOR` table and can be extended with new activity types without code changes.
-
----
-
-## Workflow & Approval
-
-```
- ┌────────┐   submitRecord    ┌───────────┐   approveRecord   ┌──────────┐
- │ DRAFT  │ ───────────────▶  │ SUBMITTED │ ────────────────▶ │ APPROVED │
- └────────┘                   └───────────┘                   └──────────┘
-                                    │
-                                    │ rejectRecord
-                                    ▼
-                               ┌──────────┐
-                               │ REJECTED │
-                               └──────────┘
-```
-
-- Records start as **DRAFT** (created via Fiori Elements with draft support)
-- The reporter submits → status moves to **SUBMITTED**
-- A sustainability manager approves or rejects
-- Only APPROVED records count toward official emissions reporting
-
----
-
-## BTP Trial Limitations
-
-This project was built on a **free SAP BTP ABAP Trial** account. Two known limitations affect the architecture:
-
-| Limitation | Impact | Workaround |
-|---|---|---|
-| Communication Arrangements not available | Cannot create machine-to-machine Basic Auth credentials for the ABAP HTTP service | Custom HTTP service secured via Communication Scenario published locally in ADT; MCP server falls back to static data on 401 |
-| No AI Core / GenAI Hub on trial | Cannot make outbound LLM calls from ABAP actions | "Generate Report" action planned using direct Anthropic API call from ABAP HTTP client (roadmap) |
-
-These limitations do not affect the core RAP + Fiori application — only the external integrations.
-
----
-
-## Local Setup
+## Getting started
 
 ### Prerequisites
 
-- SAP BTP ABAP Trial account ([get one free](https://developers.sap.com/tutorials/abap-environment-trial-onboarding.html))
-- ABAP Development Tools (ADT) — Eclipse plugin
-- Node.js 20+
-- Claude Desktop ([download](https://claude.ai/download))
+- A SAP BTP ABAP Environment (trial works) and **ABAP Development Tools** in Eclipse, with abapGit
+- Node.js 20 or newer
+- For the AI part: Claude Desktop
 
-### 1. Clone the repository
+### 1. Import the ABAP objects
+
+1. In ADT, connect to your ABAP system and create the package `ZESG_CORE`.
+2. Link this repository with abapGit (starting folder `/src/`), pull and activate.
+3. Publish the service bindings (`ZUI_ESG_EMISSIONRECORD_O4`, `ZUI_ESG_ANALYTICS_O4`, `ZUI_ESG_MASTERDATA_O4`, `ZUI_ESG_USERADMIN_O4`).
+4. Maintain emission factors through the master data service, then run `ZCL_ESG_SEED_DATA`.
+
+### 2. Run the Fiori apps
+
+The `ui5.yaml` files proxy `/sap` to the ABAP system through a BTP destination. Adjust the system URL and destination to your own account first.
 
 ```bash
-git clone https://github.com/<your-username>/carbon-compass.git
-cd carbon-compass
+cd emissionrecord      # or esganalytics
+npm install
+npm start
 ```
 
-### 2. Import ABAP objects via abapGit
+### 3. Run the report server
 
-1. Open ADT → connect to your BTP ABAP trial system
-2. Open abapGit in ADT → New Online Repository
-3. Point to this repo, assign to package `ZESG_CAPSTONE`
-4. Pull all objects and activate
+```bash
+cd report-server
+npm install
+npm start
+```
 
-### 3. Install MCP server dependencies
+Keep it running while you use *Generate Report* in the transactional app. Copy `.env.example` to `.env` only if you want the `?id=` fallback that reads from OData.
+
+### 4. Connect Claude Desktop (optional)
 
 ```bash
 cd mcp-server
 npm install
 ```
 
-### 4. Configure Claude Desktop
-
-Edit `%APPDATA%\Claude\claude_desktop_config.json` (Windows) or `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
-
-```json
-{
-  "mcpServers": {
-    "carbon-compass-esg": {
-      "command": "node",
-      "args": ["<absolute-path-to-repo>/mcp-server/index.js"],
-      "env": {
-        "ODATA_BASE_URL": "https://<your-btp-guid>.abap-web.ap21.hana.ondemand.com",
-        "ODATA_USERNAME": "<your-btp-user>",
-        "ODATA_PASSWORD": "<your-btp-password>"
-      }
-    }
-  }
-}
-```
-
-### 5. Restart Claude Desktop
-
-Quit and reopen Claude Desktop. The `carbon-compass-esg` MCP server will appear in the tool list.
-
-### 6. Test
-
-Ask Claude: *"Which facility has the highest CO₂e emissions? Show me all records and their line items."*
+Then add the server to `claude_desktop_config.json` as shown above and restart Claude Desktop.
 
 ---
 
-## Sample Data
+## BTP trial constraints
 
-Three emission records across three facilities for 2024-Q4:
-
-| Record | Facility | Scope | Status | Total CO₂e |
-|---|---|---|---|---|
-| REC-2024-001 | FR-LYO-01 (Lyon) | SCOPE2 | APPROVED | **12,244.0 kg** |
-| REC-2024-002 | TN-SFX-01 (Sfax) | SCOPE1 | SUBMITTED | 4,876.5 kg |
-| REC-2024-003 | DE-BER-01 (Berlin) | SCOPE1 | DRAFT | 1,320.75 kg |
-
-**FR-LYO-01 breakdown:**
-- Electricity: 48,200 kWh × 0.200 = 9,640 kg CO₂e
-- District heating: 12,800 kWh × 0.203 = 2,604 kg CO₂e
+- Communication arrangements for machine-to-machine access are limited on the trial. The MCP server therefore uses a custom HTTP service and falls back to sample data if it cannot authenticate.
+- There is no AI Core / generative AI hub on the trial, so the AI integration lives outside ABAP, in the MCP server and Claude Desktop.
 
 ---
 
-## Roadmap
+## Known gaps and roadmap
 
-- [x] **DCL row-level security** — access control on `ZI_EmissionRecord` scoped by facility assignment ✅
-- [x] **User management** — admin app to assign BTP users to facilities ✅
-- [x] **Analytics dashboard** — Fiori Elements Analytical List Page with CO₂e charts ✅
-- [x] **Professional PDF reporting** — standalone report server (single + batch) ✅
-- [ ] **Generate Report action** — ABAP action that calls Anthropic API / SAP AI Core and returns a narrative ESG summary per record
-- [ ] **Authorization by persona** — restrict Submit to reporters, Approve/Reject to sustainability managers using PFCG roles
-- [ ] **Live BTP auth** — resolve machine-to-machine auth for the MCP server using OAuth 2.0 client credentials
-- [ ] **Scope 3 support** — extend activity types and value chain emission categories
-
----
-
-## Author
-
-**Aziz Bannour**
-SAP Techno-Functional Consultant · SAP ABAP Cloud Certified (C_ABAPD_2601) · SAP Certified Generative AI Developer
-
-Built as a portfolio capstone to demonstrate end-to-end SAP Cloud Native development on BTP.
-
----
-
-*SAP, SAP BTP, SAP Fiori, ABAP, and related marks are trademarks of SAP SE. This is an independent community project and is not affiliated with or endorsed by SAP SE.*
+- The `/report-batch` route exists, but the analytical app does not yet have a *Generate Report* button for the selected rows; only the transactional app triggers a report.
+- The report URL is hardcoded to `http://localhost:3000`. For a shared deployment, host the report server over HTTPS and make the base URL configurable.
+- `ZCL_ESG_HTTP_SERVICE` returns whole tables without filtering or paging; access control relies on the communication scenario.
+- `FacilityId` is not mandatory in the BO yet, so a record can be saved without a facility.
+- `report-server/README.md` still describes the older OData-only mode; `INTEGRATION.md` and this file describe the current URL-payload mode.
+- The project folders include generated Fiori test scaffolding (`webapp/test`), which is not customized.
