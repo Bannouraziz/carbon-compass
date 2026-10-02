@@ -1,6 +1,6 @@
 # 🌿 Carbon Compass — SAP BTP ESG Emissions Tracker
 
-> Full-stack capstone project built on **SAP BTP ABAP Trial** — combining ABAP Cloud RAP, SAP Fiori Elements, a custom Node.js MCP server, and LLM integration for end-to-end ESG emissions tracking and reporting.
+> Full-stack capstone project built on **SAP BTP ABAP Trial** — combining ABAP Cloud RAP, SAP Fiori Elements (transactional + analytical), row-level authorization, a Node.js MCP server for LLM integration, and a standalone report server for professional PDF reporting — end-to-end ESG emissions tracking, analytics and reporting.
 
 ---
 
@@ -13,7 +13,11 @@
 - [Data Model](#data-model)
 - [ABAP Backend](#abap-backend)
 - [Fiori Elements Frontend](#fiori-elements-frontend)
+- [ESG Analytics](#esg-analytics)
+- [Authorization & Row-Level Security](#authorization--row-level-security)
+- [User Management](#user-management)
 - [MCP Server](#mcp-server)
+- [Report Server](#report-server)
 - [Emission Factors](#emission-factors)
 - [Workflow & Approval](#workflow--approval)
 - [BTP Trial Limitations](#btp-trial-limitations)
@@ -87,9 +91,12 @@ The project was built as a portfolio capstone to demonstrate full-stack SAP Clou
 | **ABAP Backend** | SAP ABAP Cloud (BTP ABAP Environment Trial) |
 | **Data Modeling** | ABAP CDS Views (Interface + Projection pattern) |
 | **Business Logic** | RAP — Managed BO, strict(2), draft-enabled |
-| **UI** | SAP Fiori Elements — List Report + Object Page, OData V4 |
+| **UI** | SAP Fiori Elements — List Report + Object Page (transactional) and Analytical List Page (analytics), OData V4 |
+| **Analytics** | ABAP CDS analytical cube (`@Analytics.dataCategory: #CUBE`) + query |
+| **Authorization** | DCL access control (row-level) + `ZI_UserAssignment` user↔facility mapping |
 | **HTTP Bridge** | Custom ABAP HTTP Service (`ZS_ESG_HTTP_SERVICE`) |
 | **MCP Server** | Node.js 20, `@modelcontextprotocol/sdk`, `zod`, `node-fetch` |
+| **Report Server** | Node.js 20, Express, Chart.js — HTML + print-to-PDF reports |
 | **AI Interface** | Claude Desktop (Anthropic) via MCP protocol |
 | **Dev Tools** | ABAP Development Tools (ADT / Eclipse), abapGit, VS Code |
 
@@ -100,34 +107,29 @@ The project was built as a portfolio capstone to demonstrate full-stack SAP Clou
 ```
 carbon-compass/
 │
-├── mcp-server/
-│   ├── index.js              # MCP server — 4 ESG tools, static fallback
+├── src/zesg_core/            # All ABAP Cloud objects (pushed via abapGit)
+│   ├── zi_emissionrecord.*            # Interface view + behavior + DCL — header
+│   ├── zi_emissionrecorditem.*        # Interface view — line items
+│   ├── zc_emissionrecord.*            # Projection view + behavior — header
+│   ├── zc_emissionrecorditem.*        # Projection view — items
+│   ├── zi_emissionanalyticscube.*     # Analytical cube (@Analytics #CUBE)
+│   ├── zc_emissionanalytics.*         # Analytics query projection
+│   ├── zi_userassignment.* / zc_*     # User↔Facility assignment + DCL aspect
+│   ├── zui_esg_emissionrecord_o4.srvb # OData V4 binding — transactional app
+│   ├── zui_esg_analytics_o4.srvb      # OData V4 binding — analytics app
+│   └── zui_esg_useradmin_o4.srvb      # OData V4 binding — user admin app
+│
+├── emissionrecord/           # Fiori Elements app — List Report + Object Page
+├── esganalytics/             # Fiori Elements app — Analytical List Page
+│
+├── mcp-server/               # Node.js MCP server — 4 ESG tools for Claude Desktop
+│   ├── index.js
 │   └── package.json
 │
-└── abap/                     # All ABAP objects (pushed via abapGit)
-    ├── package/
-    │   └── ZESG_CAPSTONE     # Root package
-    │       └── ZESG_CORE     # Core sub-package
-    │
-    ├── cds/
-    │   ├── ZI_EMISSIONRECORD.ddls       # Interface view — header
-    │   ├── ZI_EMISSIONRECORDITEM.ddls   # Interface view — line items
-    │   ├── ZI_FACILITY.ddls             # Master data — facilities
-    │   ├── ZI_EMISSIONFACTOR.ddls       # Master data — emission factors
-    │   ├── ZC_EMISSIONRECORD.ddls       # Projection view — header
-    │   └── ZC_EMISSIONRECORDITEM.ddls   # Projection view — items
-    │
-    ├── behavior/
-    │   ├── ZI_EMISSIONRECORD.bdef       # Behavior definition
-    │   └── ZBP_I_EMISSIONRECORD.clas    # Behavior implementation
-    │
-    ├── service/
-    │   ├── ZESG_ESG_MCP.srvd            # Service definition
-    │   └── ZESG_ESG_MCP.srvb            # Service binding (OData V4)
-    │
-    └── http/
-        ├── ZS_ESG_HTTP_SERVICE.sicf     # HTTP service handler
-        └── ZCL_ESG_HTTP_SERVICE.clas    # HTTP handler class
+└── report-server/            # Node.js/Express — professional PDF report server
+    ├── server.js             # /report (single) + /report-batch (summary)
+    ├── INTEGRATION.md        # How to wire it to the Fiori app via URL params
+    └── package.json
 ```
 
 ---
@@ -249,6 +251,47 @@ The service is secured via a Communication Scenario (`ZESG_ESG_MCP`) published l
 
 ---
 
+## ESG Analytics
+
+An analytical model for multidimensional reporting on top of the transactional data:
+
+- **`ZI_EmissionAnalyticsCube`** — CDS analytical cube (`@Analytics.dataCategory: #CUBE`) exposing CO₂e as a measure with facility, scope, activity type, and reporting period as dimensions
+- **`ZC_EmissionAnalytics`** — query projection consumed by the UI
+- **`ZUI_ESG_ANALYTICS_O4`** — OData V4 service binding
+- **`esganalytics/`** — Fiori Elements **Analytical List Page (ALP)** app with interactive charts and drill-down by dimension
+
+This lets users slice emissions by facility/scope/period without leaving Fiori.
+
+---
+
+## Authorization & Row-Level Security
+
+Access to emission records is restricted per user using a **DCL access control** combined with a user↔facility assignment table — a user only sees records for facilities they are assigned to.
+
+```abap
+@MappingRole: true
+define role ZI_EmissionRecord {
+  grant select on ZI_EmissionRecord
+    where (FacilityId) = aspect ZI_UserAssignment;
+}
+```
+
+- **`ZI_UserAssignment`** — maps a BTP user to one or more facilities (persisted in `ZESG_USR_ASSIGN`)
+- The DCL filters `ZI_EmissionRecord` so each user's list is scoped to their facilities
+- Enforced consistently across the Fiori apps, the OData services, and any consumer
+
+---
+
+## User Management
+
+A dedicated admin app to maintain who can see what:
+
+- **`ZC_UserAssignment`** (behavior-enabled) — create/update/delete user↔facility assignments
+- **`ZUI_ESG_USERADMIN`** — OData V4 service (`expose ZC_UserAssignment as UserAssignment`)
+- Administrators assign BTP users to facilities, which immediately drives the row-level security above
+
+---
+
 ## MCP Server
 
 The Node.js MCP server exposes four tools that Claude Desktop can call to query ESG data conversationally.
@@ -290,6 +333,30 @@ BTP trial does not support Communication Arrangements for machine-to-machine Bas
 2. If BTP returns 401, times out, or is unreachable → silently falls back to embedded static data
 3. Static data mirrors the production BTP records exactly
 4. When BTP auth is eventually resolved, live data takes over automatically — no code change needed
+
+---
+
+## Report Server
+
+A standalone **Node.js / Express** server ([`report-server/`](report-server/)) that renders professional ESG reports as web pages that print cleanly to PDF. It needs **no connection to BTP** — the Fiori app passes the record data in the URL, so the server holds no credentials.
+
+### Routes
+
+| Route | Purpose |
+|---|---|
+| `GET /report?d=<payload>` | Single-record report. `d` = base64url-encoded JSON of `{ record, items }` |
+| `POST /report-batch` | Multi-record summary report. Form field `payload` = JSON `{ records: [...] }` |
+
+### Features
+
+- **Dark dashboard on screen, professional A4 document on print** — a dedicated print stylesheet (letterhead, serif headings, ruled tables, page-break control) so the PDF never looks like a screenshot
+- **Chart.js visualizations** — single report: CO₂e by activity type + quantity per item; batch: CO₂e by scope / facility / period and record count by status (charts recolor to dark ink for print)
+- **KPI tiles, totals, and a Download PDF button** (client-side `window.print()`)
+- **`MOCK=1` demo mode** for running without any data source
+
+### Integration
+
+The Fiori object page builds the URL from its binding context and opens the report in a new tab — see [`report-server/INTEGRATION.md`](report-server/INTEGRATION.md) for the controller snippet and payload shape.
 
 ---
 
@@ -420,12 +487,14 @@ Three emission records across three facilities for 2024-Q4:
 
 ## Roadmap
 
+- [x] **DCL row-level security** — access control on `ZI_EmissionRecord` scoped by facility assignment ✅
+- [x] **User management** — admin app to assign BTP users to facilities ✅
+- [x] **Analytics dashboard** — Fiori Elements Analytical List Page with CO₂e charts ✅
+- [x] **Professional PDF reporting** — standalone report server (single + batch) ✅
 - [ ] **Generate Report action** — ABAP action that calls Anthropic API / SAP AI Core and returns a narrative ESG summary per record
 - [ ] **Authorization by persona** — restrict Submit to reporters, Approve/Reject to sustainability managers using PFCG roles
-- [ ] **DCL row-level security** — access control on `ZI_EmissionRecord` scoped by facility assignment
 - [ ] **Live BTP auth** — resolve machine-to-machine auth for the MCP server using OAuth 2.0 client credentials
 - [ ] **Scope 3 support** — extend activity types and value chain emission categories
-- [ ] **Dashboard** — Fiori Elements analytical list page with CO₂e trend charts
 
 ---
 
