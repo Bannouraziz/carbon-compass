@@ -500,7 +500,7 @@ Three emission records across three facilities for 2024-Q4:
 
 ## Author
 
-**Aziz Bannou**
+**Aziz Bannour**
 SAP Techno-Functional Consultant · SAP ABAP Cloud Certified (C_ABAPD_2601) · SAP Certified Generative AI Developer
 
 Built as a portfolio capstone to demonstrate end-to-end SAP Cloud Native development on BTP.
