@@ -323,11 +323,3 @@ Then add the server to `claude_desktop_config.json` as shown above and restart C
 
 ---
 
-## Known gaps and roadmap
-
-- The `/report-batch` route exists, but the analytical app does not yet have a *Generate Report* button for the selected rows; only the transactional app triggers a report.
-- The report URL is hardcoded to `http://localhost:3000`. For a shared deployment, host the report server over HTTPS and make the base URL configurable.
-- `ZCL_ESG_HTTP_SERVICE` returns whole tables without filtering or paging; access control relies on the communication scenario.
-- `FacilityId` is not mandatory in the BO yet, so a record can be saved without a facility.
-- `report-server/README.md` still describes the older OData-only mode; `INTEGRATION.md` and this file describe the current URL-payload mode.
-- The project folders include generated Fiori test scaffolding (`webapp/test`), which is not customized.
