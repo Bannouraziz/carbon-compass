@@ -5,11 +5,7 @@
 "!   real determinations, validation, actions and instance authorization run.
 "! - ZESG_EMREC / ZESG_EMRECITM are replaced by CDS test doubles; the two tables the
 "!   handlers read directly (ZESG_EMFACTOR, ZESG_USR_ASSIGN) by OSQL test doubles.
-"! - Nothing touches real data. Every test starts from clean doubles (see SETUP).
-"!
-"! Run in ADT: Ctrl+Shift+F10 (Run As > ABAP Unit Test), or
-"! Run As > ABAP Unit Test With > Coverage to see handler coverage.
-"! @testing ZI_EmissionRecord
+
 CLASS ltcl_emission_record DEFINITION FINAL FOR TESTING
   DURATION SHORT
   RISK LEVEL HARMLESS.
