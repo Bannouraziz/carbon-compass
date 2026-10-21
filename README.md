@@ -204,7 +204,7 @@ The fallback for users without assignments keeps the system usable on a fresh tr
 
 The behavior implementation `ZBP_I_EMISSIONRECORD` has an ABAP Unit test class, `ltcl_emission_record` (file `zbp_i_emissionrecord.clas.testclasses.abap`, 17 tests, risk level *harmless*, duration *short*).
 
-![ABAP Unit results: 17 tests passed](docs/screenshots/06-abap-unit-tests.png)
+<img width="566" height="587" alt="image" src="https://github.com/user-attachments/assets/92744788-da01-4580-afb1-16e0144b0f33" />
 
 **Approach**
 
