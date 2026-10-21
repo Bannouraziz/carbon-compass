@@ -7,11 +7,13 @@ Full-stack ESG (greenhouse-gas) emissions tracking built on a **SAP BTP ABAP Env
 ## Contents
 
 - [What it does](#what-it-does)
+- [Screenshots](#screenshots)
 - [Architecture](#architecture)
 - [Repository layout](#repository-layout)
 - [Data model](#data-model)
 - [ABAP backend](#abap-backend)
 - [Authorization](#authorization)
+- [Tests](#tests)
 - [OData services](#odata-services)
 - [Fiori apps](#fiori-apps)
 - [Report server](#report-server)
@@ -19,7 +21,6 @@ Full-stack ESG (greenhouse-gas) emissions tracking built on a **SAP BTP ABAP Env
 - [Sample data](#sample-data)
 - [Getting started](#getting-started)
 - [BTP trial constraints](#btp-trial-constraints)
-- [Known gaps and roadmap](#known-gaps-and-roadmap)
 
 ---
 
@@ -32,6 +33,40 @@ Full-stack ESG (greenhouse-gas) emissions tracking built on a **SAP BTP ABAP Env
 - Analyse emissions by facility, scope, period and status in an analytical Fiori app with KPI tags.
 - Open a **print-ready PDF report** for one record, or a summary for several, from the browser.
 - Ask Claude questions about the live data through the **Model Context Protocol (MCP)**.
+
+---
+
+## Screenshots
+
+### Analytical app: CO₂e by facility, scope, period and status
+
+Filter bar, chart and table share one set of filters; the table is a responsive table with multi-selection.
+
+<img width="1280" height="609" alt="image" src="https://github.com/user-attachments/assets/bf8cd097-7f55-473f-8a06-bc8ad863c5df" />
+
+### Transactional app: emission records
+
+List Report with the Submit, Approve and Reject actions, create and delete, and status-dependent enablement driven by the user's role.
+
+<img width="1280" height="612" alt="image" src="https://github.com/user-attachments/assets/7adfc073-28f9-4389-b693-b176efc254c6" />
+
+### Record details and Generate Report
+
+Object Page with the general information and the line items. The **Generate Report** button opens the report server with the current record.
+
+<img width="1280" height="615" alt="image" src="https://github.com/user-attachments/assets/a2e91c8d-8574-4ee7-9a7e-4cb251d67d8f" />
+
+### Generated ESG report
+
+KPI tiles, CO₂e by activity type, quantity per item and the items table. *Download PDF* uses the print stylesheet.
+
+<img width="1280" height="537" alt="image" src="https://github.com/user-attachments/assets/19250086-e724-4a07-8cab-86b06b2e0da6" />
+
+### Claude Desktop with the MCP server
+
+Claude calls the MCP tools and builds a board summary (totals per scope, top facilities, recommendations) from the emission data.
+
+<img width="1280" height="842" alt="image" src="https://github.com/user-attachments/assets/c8875bfe-844c-44b8-9bdb-f4dbe394b836" />
 
 ---
 
@@ -78,6 +113,7 @@ carbon-compass/
 ├── esganalytics/         Fiori elements app: analytical app with KPI tags (esganalytics)
 ├── mcp-server/           MCP server for Claude Desktop
 ├── report-server/        Express report server (single + batch reports)
+├── docs/screenshots/     Images used in this README
 └── .abapgit.xml          abapGit settings (starting folder /src/, full folder logic)
 ```
 
@@ -92,6 +128,7 @@ Main objects in `src/zesg_core/`:
 | Access control | `ZI_EmissionRecord` (role), `ZI_UserAssignment` (aspect) |
 | Services | `ZUI_ESG_EMISSIONRECORD`, `ZUI_ESG_ANALYTICS`, `ZUI_ESG_MASTERDATA`, `ZUI_ESG_USERADMIN` (definitions and OData V4 bindings) |
 | HTTP | `ZCL_ESG_HTTP_SERVICE`, `ZS_ESG_HTTP_SERVICE`, communication scenario `ZESG_ESG_MCP` |
+| Tests | ABAP Unit test class `ltcl_emission_record` in the test include of `ZBP_I_EMISSIONRECORD` (`zbp_i_emissionrecord.clas.testclasses.abap`) |
 | Utilities | `ZCL_ESG_SEED_DATA` (demo data generator) |
 
 ---
@@ -159,7 +196,31 @@ Two layers work together.
 | `OFFICER` | yes | only when `DRAFT` | no |
 | `MANAGER` | yes | only when `DRAFT` | only when `SUBMITTED` |
 
-The fallback for users without assignments keeps the system usable on a fresh trial account, where nobody is assigned yet.
+The fallback for users without assignments keeps the system usable on a fresh trial account, where nobody is assigned yet. This matrix is covered by the [unit tests](#tests).
+
+---
+
+## Tests
+
+The behavior implementation `ZBP_I_EMISSIONRECORD` has an ABAP Unit test class, `ltcl_emission_record` (file `zbp_i_emissionrecord.clas.testclasses.abap`, 17 tests, risk level *harmless*, duration *short*).
+
+![ABAP Unit results: 17 tests passed](docs/screenshots/06-abap-unit-tests.png)
+
+**Approach**
+
+- The tests drive the real business object through public **EML** (`MODIFY`, `COMMIT`, `READ ENTITIES`), so the actual determinations, validation, actions and instance authorization run.
+- All data is mocked: **CDS test doubles** (`cl_cds_test_environment`) replace `ZESG_EMREC` and `ZESG_EMRECITM`, **OSQL test doubles** (`cl_osql_test_environment`) replace `ZESG_EMFACTOR` and `ZESG_USR_ASSIGN`. Real data is never touched, and every test starts from clean doubles.
+
+**What is covered**
+
+| Area | Tests |
+|---|---|
+| Determinations | New record gets `DRAFT` and today's date; item CO₂e equals quantity × factor; record total is the sum of its items; changing a quantity recalculates the total; an activity type without a factor yields `0` (documents the current behavior) |
+| Validation | Submitting a record with total ≤ 0 is rejected and the status is not persisted; a positive total submits |
+| Actions | `approveRecord` sets `APPROVED`, `rejectRecord` sets `REJECTED`, `generateReport` writes the summary into `Notes` |
+| Authorization | No assignments means full rights; `OFFICER` submits `DRAFT` only and cannot approve; `AUDITOR` is read-only; `MANAGER` approves `SUBMITTED` only; an assignment for another facility gives no access |
+
+**Run them** in ADT: select the class and press `Ctrl+Shift+F10` (*Run As → ABAP Unit Test*). Use *Run As → ABAP Unit Test With → Coverage* to see which handler lines are exercised.
 
 ---
 
@@ -322,4 +383,3 @@ Then add the server to `claude_desktop_config.json` as shown above and restart C
 - There is no AI Core / generative AI hub on the trial, so the AI integration lives outside ABAP, in the MCP server and Claude Desktop.
 
 ---
-
